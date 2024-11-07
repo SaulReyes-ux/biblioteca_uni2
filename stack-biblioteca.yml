@@ -1,0 +1,89 @@
+version: '3.8'
+
+services:
+  # Servicio de PHPMyAdmin
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin:latest
+    container_name: phpmyadmin
+    restart: always
+    ports:
+      - 9090:80
+    environment:
+      PMA_HOST: mysql-db
+      MYSQL_ROOT_PASSWORD: qwerty
+      PMA_ARBITRARY: 1
+      PHP_UPLOAD_MAX_FILESIZE: 10M
+      PHP_MAX_INPUT_VARS: 5000
+      PMA_ABSOLUTE_URI: http://localhost:9090
+      PMA_ALLOW_HTTP: 1 
+    deploy:
+      resources:
+        limits:
+          cpus: '0.20'
+          memory: 200M
+        reservations:
+          cpus: '0.10'
+          memory: 100M
+  
+  # Servicio de MySQL
+  mysql-db:
+    image: mysql:8.0
+    command: mysqld --default-authentication-plugin=mysql_native_password
+    container_name: mysql-db
+    ports:
+      - 3306:3306
+    volumes:
+      - ./mysql_data:/var/lib/mysql
+      - ./dbfiles:/docker-entrypoint-initdb.d  # Asegúrate de que este directorio contenga el archivo SQL
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: BD_Sistema_BiBlioteca
+    deploy:
+      resources:
+        limits:
+          cpus: '0.50'
+          memory: 500M
+        reservations:
+          cpus: '0.15'
+          memory: 200M
+
+# Servicio del Backend
+  sistema-ventas-back:
+    build:
+      context: ./Sistema-BiBlioteca-Back-main
+      dockerfile: Dockerfile
+    container_name: Sistema-BiBlioteca-Back-main
+    restart: always
+    ports:
+      - "8080:3000"
+    depends_on:
+      - mysql-db
+    environment:
+      - NODE_ENV=development
+    deploy:
+      resources:
+        limits:
+          cpus: '0.50'
+          memory: 300M
+        reservations:
+          cpus: '0.20'
+          memory: 100M
+
+# Servicio Frontend de Sistema de Ventas
+  sistema-ventas-front:
+    build:
+      context: ./Sistema-BiBlioteca-Front
+      dockerfile: Dockerfile
+    container_name: Sistema-Biblioteca-Front
+    ports:
+      - 80:80
+    depends_on:
+      - sistema-ventas-back
+    deploy:
+      resources:
+        limits:
+          cpus: '0.3'
+          memory: 300M
+        reservations:
+          cpus: '0.15'
+          memory: 200M
